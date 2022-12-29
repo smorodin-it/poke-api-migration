@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"io"
@@ -9,25 +10,28 @@ import (
 	"net/http"
 	"poke-api-go/constants"
 	"poke-api-go/models"
+	"sync"
 )
 
-func getPokemon(url string) {
-	pokeResp, err := http.Get(url)
+func getPokemon(url string, pkmEntityList *[]models.PokemonResponse, wg *sync.WaitGroup) {
+	defer wg.Done()
+	retrievePokemonResp, err := http.Get(url)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
 
-	pokeRespBody, err := io.ReadAll(pokeResp.Body)
+	retrievePokemonRespBody, err := io.ReadAll(retrievePokemonResp.Body)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
-	var entityResponse models.PokemonResponse
-	if err = json.Unmarshal(pokeRespBody, &entityResponse); err != nil {
+
+	var pokemonResp models.PokemonResponse
+	if err = json.Unmarshal(retrievePokemonRespBody, &pokemonResp); err != nil {
 		log.Fatal(err.Error())
 	}
 
-	log.Printf("ID: %d Name: %s", entityResponse.Id, entityResponse.Name)
-
+	log.Printf("ID: %d Name: %s", pokemonResp.Id, pokemonResp.Name)
+	*pkmEntityList = append(*pkmEntityList, pokemonResp)
 }
 
 func main() {
@@ -43,7 +47,7 @@ func main() {
 
 	pokeListResp, err := http.Get(constants.BaseApiUrl)
 	if err != nil {
-		log.Println(err.Error())
+		log.Fatal(err.Error())
 	}
 
 	pokeListRespBody, err := io.ReadAll(pokeListResp.Body)
@@ -56,11 +60,18 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	var pkmEntityList []models.PokemonResponse
+
 	//var pokeList []models.Pokemon
+
+	var wg sync.WaitGroup
 	for _, pkm := range listResponse.Results {
-		getPokemon(pkm.Url)
+		wg.Add(1)
+		go getPokemon(pkm.Url, &pkmEntityList, &wg)
 	}
+	wg.Wait()
+
+	fmt.Println(pkmEntityList)
 
 	//db.Create(&pokeList)
-
 }
