@@ -31,7 +31,7 @@ func getPokemon(url string) {
 }
 
 func main() {
-	dsn := "host=localhost user=poke-api password=poke-api dbname=poke-api port=5432 sslmode=disable TimeZone=Europe/Moscow"
+	dsn := constants.Dsn
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		log.Fatal(err.Error())
@@ -41,7 +41,7 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	pokeListResp, err := http.Get(constants.BASE_URL)
+	pokeListResp, err := http.Get(constants.BaseApiUrl)
 	if err != nil {
 		log.Println(err.Error())
 	}
