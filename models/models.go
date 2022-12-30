@@ -1,17 +1,13 @@
 package models
 
-import "gorm.io/gorm"
-
-type PokemonType struct {
-	gorm.Model
-	Slot uint
-	Type string
-}
+import (
+	"github.com/jackc/pgtype"
+	"gorm.io/gorm"
+)
 
 type Pokemon struct {
 	gorm.Model
-	Name string
-	//PkdxId uint
-	//Order  uint
-	//Types  []PokemonType `gorm:"many2many:pokemon_type;"`
+	Name   string
+	PkdxId uint
+	Types  pgtype.JSONB
 }

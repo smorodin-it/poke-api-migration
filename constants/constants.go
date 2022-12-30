@@ -21,5 +21,5 @@ var config = DbConfig{
 var Dsn = fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable TimeZone=Europe/Moscow", config.host, config.user, config.password, config.dbname, config.port)
 
 const (
-	BaseApiUrl = "https://pokeapi.co/api/v2/pokemon?limit=1154"
+	PokemonListUrl = "https://pokeapi.co/api/v2/pokemon?limit=1154"
 )

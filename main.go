@@ -2,18 +2,18 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"io"
 	"log"
 	"net/http"
+	apiResp "poke-api-go/api_responses"
 	"poke-api-go/constants"
 	"poke-api-go/models"
 	"sync"
 )
 
-func getPokemon(url string, pkmEntityList *[]models.PokemonResponse, wg *sync.WaitGroup) {
+func getPokemon(url string, pokeList *[]models.Pokemon, wg *sync.WaitGroup) {
 	defer wg.Done()
 	retrievePokemonResp, err := http.Get(url)
 	if err != nil {
@@ -25,13 +25,22 @@ func getPokemon(url string, pkmEntityList *[]models.PokemonResponse, wg *sync.Wa
 		log.Fatal(err.Error())
 	}
 
-	var pokemonResp models.PokemonResponse
+	var pokemonResp apiResp.PokemonResponse
 	if err = json.Unmarshal(retrievePokemonRespBody, &pokemonResp); err != nil {
 		log.Fatal(err.Error())
 	}
-
 	log.Printf("ID: %d Name: %s", pokemonResp.Id, pokemonResp.Name)
-	*pkmEntityList = append(*pkmEntityList, pokemonResp)
+
+	pokemon := models.Pokemon{
+		Name:   pokemonResp.Name,
+		PkdxId: pokemonResp.Id,
+	}
+
+	if err = pokemon.Types.Set(pokemonResp.Types); err != nil {
+		log.Fatal(err.Error())
+	}
+
+	*pokeList = append(*pokeList, pokemon)
 }
 
 func main() {
@@ -41,11 +50,16 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
+	// Pokemon list
+	if err = db.Migrator().DropTable(&models.Pokemon{}); err != nil {
+		log.Fatal(err.Error())
+	}
+
 	if err = db.AutoMigrate(&models.Pokemon{}); err != nil {
 		log.Fatal(err.Error())
 	}
 
-	pokeListResp, err := http.Get(constants.BaseApiUrl)
+	pokeListResp, err := http.Get(constants.PokemonListUrl)
 	if err != nil {
 		log.Fatal(err.Error())
 	}
@@ -55,23 +69,20 @@ func main() {
 		log.Fatal(err.Error())
 	}
 
-	var listResponse models.PokemonListResponse
+	var listResponse apiResp.PokemonListResponse
 	if err = json.Unmarshal(pokeListRespBody, &listResponse); err != nil {
 		log.Fatal(err.Error())
 	}
 
-	var pkmEntityList []models.PokemonResponse
-
-	//var pokeList []models.Pokemon
+	var pokeList []models.Pokemon
 
 	var wg sync.WaitGroup
 	for _, pkm := range listResponse.Results {
 		wg.Add(1)
-		go getPokemon(pkm.Url, &pkmEntityList, &wg)
+		go getPokemon(pkm.Url, &pokeList, &wg)
 	}
+
 	wg.Wait()
+	db.Create(&pokeList)
 
-	fmt.Println(pkmEntityList)
-
-	//db.Create(&pokeList)
 }
